@@ -586,6 +586,15 @@ int MDnsSdListener::Monitor::stopService() {
     return result;
 }
 
+int pollErr(int pollEvents) {
+    int pollErrors = POLLERR|POLLHUP|POLLRDHUP|POLLNVAL;
+    if (pollEvents & pollErrors) {
+        ALOGD("polling error: %d", pollEvents);
+        return 1;
+    }
+    return 0;
+}
+
 void MDnsSdListener::Monitor::run() {
     int pollCount = 1;
 
@@ -613,7 +622,10 @@ void MDnsSdListener::Monitor::run() {
                         ALOGD("Monitor found [%d].revents = %d - calling ProcessResults",
                                 i, mPollFds[i].revents);
                     }
-                    DNSServiceProcessResult(*(mPollRefs[i]));
+                    // check poll error before processing the results
+                    if (!pollErr(mPollFds[i].revents)) {
+                        DNSServiceProcessResult(*(mPollRefs[i]));
+                    }
                     mPollFds[i].revents = 0;
                 }
             }
